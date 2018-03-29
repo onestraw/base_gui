@@ -8,6 +8,7 @@ A wrapper for Tkinter, it's very simple and helpful to equip your backend progra
 
 # How to use
 
+- `pip install base-gui`
 - create base_gui.Config to specify the input type and number, here I call it `data row`
 
 ```python
