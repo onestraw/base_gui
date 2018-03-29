@@ -2,6 +2,26 @@
 # -*- coding: utf-8 -*-
 
 
+import random
+
+
+class Color(object):
+
+    BLUE = '#8A2BE2'
+
+    @classmethod
+    def random_bg_fg_pair(cls):
+        """
+            generate random color pair (background, foreground)
+        """
+        ct = [random.randrange(256) for x in range(3)]
+        brightness = int(round(0.299 * ct[0] + 0.587 * ct[1] + 0.114 * ct[2]))
+        ct_hex = '%02x%02x%02x' % tuple(ct)
+        bg_colour = '#' + "".join(ct_hex)
+        fg_colour = 'White' if brightness < 120 else 'Black'
+        return (bg_colour, fg_colour)
+
+
 class Config(object):
     """
         Configurations for BaseWindow
@@ -19,6 +39,17 @@ class Config(object):
             {'label': 'output I', 'last_label': 'select dir', 'type': 'FILE'},
         ]
     }
+
+    # default configurations
+    BTN_BGC, BTN_FGC = Color.random_bg_fg_pair()
+    BACKGROUND_COLOR = Color.BLUE
+    STATUS_LABEL = 'unperformed'
+    EXEC_LABEL = 'start'
+    CLOSE_LABEL = 'close'
+    ROW_PAD = 16
+    COL_PAD = 10
+    POSITION = (300, 200)
+    ROW_TYPE = ['FILE', 'TEXT']
 
     def __init__(self, title, data_row):
         self.title = title
@@ -56,5 +87,7 @@ class Config(object):
             for k in data_row_keys:
                 if k not in row:
                     raise ValueError('{} should contain {}'.format(row, k))
+            if row['type'] not in self.ROW_TYPE:
+                raise ValueError('not supported type: {} '.format(row['type']))
 
         self._input_row = value

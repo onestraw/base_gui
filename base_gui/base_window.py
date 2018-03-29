@@ -2,46 +2,24 @@
 # -*- coding: utf-8 -*-
 
 
-import random
-import traceback
 import multiprocessing
 import Tkinter
 import tkFileDialog
 
-
-class Color(object):
-
-    BLUE = '#8A2BE2'
-
-    @classmethod
-    def random_bg_fg_pair(cls):
-        """
-            generate random color pair (background, foreground)
-        """
-        ct = [random.randrange(256) for x in range(3)]
-        brightness = int(round(0.299 * ct[0] + 0.587 * ct[1] + 0.114 * ct[2]))
-        ct_hex = '%02x%02x%02x' % tuple(ct)
-        bg_colour = '#' + "".join(ct_hex)
-        fg_colour = 'White' if brightness < 120 else 'Black'
-        return (bg_colour, fg_colour)
+from . import config
 
 
 class BaseWindow(object):
+    """
+        BaseWindow is a wrapper for Tkinter.
+        it use grid to organize simple input box,
+        user can specify any number of rows through Config
+        each row contains 3 cols: label, input_box, button/label
 
-    align_center = Tkinter.EW
-    align_EWN = Tkinter.EW + Tkinter.N
-    align_right = Tkinter.E
-
-    ROW_TYPE = ['FILE', 'TEXT']
-    DEFAULT_RESULT_LABEL = 'unperformed'
-    EXEC_LABEL = 'start'
-    CLOSE_LABEL = 'close'
-    row_pad = 16
-    col_pad = 10
-    main_bg_color = Color.BLUE
-    btn_bgc, btn_fgc = Color.random_bg_fg_pair()
-
-    row_items = {}
+        BaseWindow provide interface to register callbacks for button,
+        and user can define a custom worker to wrap all the backend tasks,
+        then BaseWindow forks process to execute the worker independently
+    """
 
     def __init__(self, cfg):
         self.master = Tkinter.Tk()
@@ -62,15 +40,26 @@ class BaseWindow(object):
         """
             cfg is instance of Config
         """
+        if not isinstance(cfg, config.Config):
+            raise ValueError('cfg should a instance of Config')
+
+        self.btn_bgc, self.btn_fgc = cfg.BTN_BGC, cfg.BTN_FGC
+        self.main_bg_color = cfg.BACKGROUND_COLOR
+        self.status_label = cfg.STATUS_LABEL
+        self.exec_label = cfg.EXEC_LABEL
+        self.close_label = cfg.CLOSE_LABEL
+        self.row_pad = cfg.ROW_PAD
+        self.col_pad = cfg.COL_PAD
+        self.position = cfg.POSITION
         self.title = cfg.title
-        self.row_config = cfg.input_row['row']
         self.row_num = cfg.input_row['count']
+        self.row_config = cfg.input_row['row']
+        self.row_items = {}
 
     def init_ui(self):
         master = self.master
         master.title(self.title)
-        pos = (300, 200)
-        master.geometry('+%d+%d' % (pos))
+        master.geometry('+%d+%d' % (self.position))
         master.resizable(0, 0)
         master.config(background=self.main_bg_color)
 
@@ -91,24 +80,26 @@ class BaseWindow(object):
 
         # last row
         last_row_idx = self.row_num
+        align_EWN = Tkinter.EW + Tkinter.N
+
         self.close_btn = Tkinter.Button(master,
-                                        text=self.CLOSE_LABEL,
+                                        text=self.close_label,
                                         command=master.quit,
                                         highlightbackground=self.main_bg_color)
-        self.close_btn.grid(row=last_row_idx, column=0, sticky=self.align_EWN)
+        self.close_btn.grid(row=last_row_idx, column=0, sticky=align_EWN)
 
         self.exec_btn = Tkinter.Button(master,
-                                       text=self.EXEC_LABEL,
+                                       text=self.exec_label,
                                        command=self.execute,
                                        highlightbackground=self.main_bg_color)
-        self.exec_btn.grid(row=last_row_idx, column=1, sticky=self.align_EWN)
+        self.exec_btn.grid(row=last_row_idx, column=1, sticky=align_EWN)
 
-        bgc, fgc = Color.random_bg_fg_pair()
-        self.result_lbl = Tkinter.Label(self.master,
-                                        text=self.DEFAULT_RESULT_LABEL,
+        bgc, fgc = config.Color.random_bg_fg_pair()
+        self.status_lbl = Tkinter.Label(self.master,
+                                        text=self.status_label,
                                         background=bgc,
                                         foreground=fgc)
-        self.result_lbl.grid(row=last_row_idx, column=2, sticky=self.align_EWN)
+        self.status_lbl.grid(row=last_row_idx, column=2, sticky=align_EWN)
 
     def create_row(self, row_idx, row_type, input_label, last_label, callback):
         """
@@ -117,16 +108,18 @@ class BaseWindow(object):
             FILE type row must have callback
             TEXT type row does not need callback
         """
-        bgc, fgc = Color.random_bg_fg_pair()
+        bgc, fgc = config.Color.random_bg_fg_pair()
+        align_right = Tkinter.E
+        align_center = Tkinter.EW
 
         lbl = Tkinter.Label(self.master,
                             text=input_label,
                             background=bgc,
                             foreground=fgc)
-        lbl.grid(row=row_idx, column=0, sticky=self.align_right, padx=3)
+        lbl.grid(row=row_idx, column=0, sticky=align_right, padx=3)
 
         input_box = Tkinter.Entry(self.master, borderwidth='0')
-        input_box.grid(row=row_idx, column=1, sticky=self.align_center)
+        input_box.grid(row=row_idx, column=1, sticky=align_center)
 
         if row_type == 'FILE':
             item = Tkinter.Button(self.master,
@@ -143,7 +136,7 @@ class BaseWindow(object):
         else:
             raise Exception('unsupported row type')
 
-        item.grid(row=row_idx, column=2, sticky=self.align_center)
+        item.grid(row=row_idx, column=2, sticky=align_center)
 
         return [lbl, input_box, item]
 
@@ -177,39 +170,36 @@ class BaseWindow(object):
         """
         self.row_config[row_idx]['callback'] = callback
 
-    def update_result(self, msg):
+    def update_status(self, msg):
         """
-            show processing status in result label
+            show processing status in status label
         """
-        self.result_lbl.config(text=msg)
+        self.status_lbl.config(text=msg)
 
     def execute(self):
         """
             execute button action
             read data from self.row_items, check inputs,
-            process it, show status in result_lbl
+            process it, show status in status_lbl
         """
         ok, msg = self.check_inputs()
         if not ok:
-            self.update_result(msg)
+            self.update_status(msg)
         else:
             self.register_worker()
-            try:
-                self.exec_btn.config(state=Tkinter.DISABLED)
-                self.p = multiprocessing.Process(
-                     target=self.worker, args=self.worker_args)
-                self.p.start()
-                self.master.after(self.query_delay, self.on_get_result)
-            except Exception:
-                traceback.print_exc()
+            self.exec_btn.config(state=Tkinter.DISABLED)
+            self.worker_process = multiprocessing.Process(
+                target=self.worker, args=self.worker_args)
+            self.worker_process.start()
+            self.master.after(self.query_delay, self.on_get_result)
 
     def on_get_result(self):
         """
             check if the process is done
         """
         if not self.queue.empty():
-            self.update_result(self.queue.get(0))
-        if self.p.is_alive():
+            self.update_status(self.queue.get(0))
+        if self.worker_process.is_alive():
             self.master.after(self.query_delay, self.on_get_result)
             return
         else:

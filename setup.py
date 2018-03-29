@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='base_gui',
-    version='0.1',
+    version='0.1.2',
     description='A wrapper for Tkinter to \
             equip your backend program with GUI easily',
     url='https://github.com/onestraw/base_gui',
