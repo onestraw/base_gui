@@ -2,9 +2,13 @@
 
 A wrapper for Tkinter, it's very simple and helpful to equip your backend program with GUI.
 
+# Example
+
+[example code](./demo/demo.py)
+
 # How to use
 
-- modify the config.py to specify the input type and number, here I call it `data row`
+- create base_gui.Config to specify the input type and number, here I call it `data row`
 
 ```python
 INPUT_ROW = {
@@ -21,4 +25,4 @@ INPUT_ROW = {
 - create app and run it
 - the above configuration will generate the window like
 
-![base_gui_example](./example.jpg)
+![base_gui_example](./demo/example.jpg)

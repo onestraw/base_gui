@@ -46,5 +46,15 @@ def worker(queue, f1, f2, output_path):
 
 
 if __name__ == '__main__':
-    app = CustomWindow()
+    TITLE = 'small tool'
+    INPUT_ROW = {
+        'count': 3,
+        'row': [
+            {'label': 'input I', 'last_label': 'select file', 'type': 'FILE'},
+            {'label': 'input II', 'last_label': 'select file', 'type': 'FILE'},
+            {'label': 'output path', 'last_label': 'select dir', 'type': 'FILE'},
+        ]
+    }
+    cfg = base_gui.Config(TITLE, INPUT_ROW)
+    app = CustomWindow(cfg)
     app.run()

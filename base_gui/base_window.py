@@ -3,12 +3,10 @@
 
 
 import random
+import traceback
+import multiprocessing
 import Tkinter
 import tkFileDialog
-import multiprocessing
-import traceback
-
-import config
 
 
 class Color(object):
@@ -45,9 +43,9 @@ class BaseWindow(object):
 
     row_items = {}
 
-    def __init__(self):
+    def __init__(self, cfg):
         self.master = Tkinter.Tk()
-        self.read_config()
+        self.load_config(cfg)
         self.register_callback()
         self.init_ui()
 
@@ -60,15 +58,17 @@ class BaseWindow(object):
     def run(self):
         self.master.mainloop()
 
-    def read_config(self):
-        self.TITLE = config.TITLE
-        self.INPUT_ROW = config.INPUT_ROW
-        self.row_config = config.INPUT_ROW['row']
-        self.row_num = config.INPUT_ROW['count']
+    def load_config(self, cfg):
+        """
+            cfg is instance of Config
+        """
+        self.title = cfg.title
+        self.row_config = cfg.input_row['row']
+        self.row_num = cfg.input_row['count']
 
     def init_ui(self):
         master = self.master
-        master.title(self.TITLE)
+        master.title(self.title)
         pos = (300, 200)
         master.geometry('+%d+%d' % (pos))
         master.resizable(0, 0)
